@@ -3,83 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مولد تقارير المشرف التربوي</title>
+    <title>مركز تحميل التقارير</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-
-        :root {
-            --green: #27ae60; --yellow: #f1c40f; --blue: #3498db;
-            --red: #e74c3c; --black: #2c3e50; --gray: #7f8c8d;
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
         }
-
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f6; margin: 0; padding: 10px; }
-        .container { max-width: 850px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
-        .main-header { background: var(--black); color: white; padding: 20px; text-align: center; border-bottom: 5px solid var(--blue); }
-        .main-header h1 { margin: 0; font-size: 1.4rem; }
-        .section { padding: 20px; border-bottom: 1px solid #eee; }
-        .section-title { display: flex; align-items: center; gap: 10px; font-weight: 900; margin-bottom: 15px; font-size: 1rem; color: #2c3e50; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
-        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; }
-        input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: 'Cairo'; }
-
-        /* التنسيقات اللونية */
-        .sec-1 { border-right: 5px solid var(--green); }
-        .sec-2 { border-right: 5px solid var(--yellow); }
-        .sec-3 { border-right: 5px solid var(--red); background: #fffafa; }
-        .sec-4 { border-right: 5px solid var(--gray); }
-
-        .btn-area { padding: 20px; display: flex; gap: 10px; background: #fff; flex-wrap: wrap; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Cairo'; font-size: 1rem; transition: 0.3s; }
-        .btn-download { background: var(--blue); color: white; }
-        .btn-print { background: var(--black); color: white; }
-        .btn-reset { background: var(--gray); color: white; }
-
-        @media print { .btn-area { display: none !important; } }
+        .loader-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12 padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border-top: 5px solid #3498db;
+        }
+        .btn-direct {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            font-family: 'Cairo';
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="main-header">
-        <h1>📓 مولد تقارير المشرف التربوي</h1>
-        <p style="margin:5px 0 0; font-size:0.9rem;">أدخل البيانات واضغط تحميل لاستخراج الوثيقة</p>
-    </div>
+<div class="loader-card">
+    <h2 id="status">جاري معالجة التقرير...</h2>
+    <p id="details">يرجى الانتظار لحظة لبدء التحميل تلقائياً.</p>
+    <button id="manualBtn" class="btn-direct" style="display:none;" onclick="downloadAction()">تحميل يدوي إذا لم يبدأ</button>
+</div>
 
-    <div class="section sec-1">
-        <div class="section-title">🟢 1. المعلومات العامة</div>
-        <div class="grid">
-            <div><label>📅 التاريخ</label><input type="date" id="date"></div>
-            <div><label>🏫 المؤسسة</label><input type="text" id="school" placeholder="اسم المؤسسة"></div>
-        </div>
-        <div style="margin-top:10px;">
-            <label>👤 اسم المشرف</label>
-            <input type="text" id="supervisor" placeholder="اسم المشرف القائم بالتقرير">
-        </div>
-    </div>
+<script>
+    let reportData = null;
 
-    <div class="section sec-2">
-        <div class="section-title">🟡 2. الغيابات</div>
-        <div class="grid">
-            <div><label>عدد التلاميذ الغائبين</label><input type="number" id="absCount"></div>
-            <div><label>غياب الأساتذة</label><input type="text" id="profAbs" placeholder="اسم الأستاذ والمادة"></div>
-        </div>
-        <div style="margin-top:10px;">
-            <label>تفاصيل وأسماء الغائبين</label>
-            <textarea id="absNames" rows="2"></textarea>
-        </div>
-    </div>
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedData = urlParams.get('data');
 
-    <div class="section sec-3">
-        <div class="section-title">🔴 3. الانضباط والحوادث</div>
-        <textarea id="incidents" rows="3" placeholder="سجل أي تأخر، شجار، أو مشكلة حدثت اليوم..."></textarea>
-    </div>
+        if (!encodedData) {
+            document.getElementById('status').innerText = "⚠️ خطأ في البيانات";
+            document.getElementById('details').innerText = "لم يتم العثور على بيانات تقرير صالحة لإتمام التحميل.";
+            return;
+        }
 
-    <div class="section sec-4">
-        <div class="section-title">⚪ 4. الملاحظات الختامية</div>
-        <textarea id="finalNotes" rows="2" placeholder="ملاحظات عامة حول سير العمل..."></textarea>
-    </div>
+        try {
+            // فك التشفير
+            const decodedJSON = decodeURIComponent(escape(atob(encodedData)));
+            reportData = JSON.parse(decodedJSON);
 
+            document.getElementById('status').innerText = "✅ التقرير جاهز";
+            document.getElementById('details').innerText = "بدأ تحميل ملف: " + (reportData.school || "تقرير") + ".txt";
+            document.getElementById('manualBtn').style.display = "inline-block";
+
+            // تشغيل التحميل التلقائي
+            downloadAction();
+
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ فشل المعالجة";
+            document.getElementById('details').innerText = "حدث خطأ أثناء فك تشفير بيانات التقرير.";
+        }
+    };
+
+    function downloadAction() {
+        if (!reportData) return;
+
+        const content = `
+=============================================
+         التقرير اليومي للمشرف التربوي         
+=============================================
+التاريخ: ${reportData.date}
+المؤسسة: ${reportData.school}
+المشرف: ${reportData.supervisor}
+---------------------------------------------
+[ الغيابات ]
+عدد التلاميذ: ${reportData.absCount}
+الأقسام: ${reportData.absClasses}
+الأسماء: ${reportData.absNames}
+غياب الأساتذة: ${reportData.profAbs}
+---------------------------------------------
+[ الانضباط والحوادث ]
+الحالة: ${reportData.disc1 ? 'شجار ' : ''}${reportData.disc2 ? 'تأخر ' : ''}${reportData.disc3 ? 'خروج بدون إذن' : ''}
+ملاحظات الانضباط: ${reportData.discNote || 'لا يوجد'}
+الحوادث: ${reportData.incidents}
+---------------------------------------------
+[ سير الدروس ]
+ملاحظات عامة: ${reportData.finalNotes}
+---------------------------------------------
+[ معلومات إضافية ]
+${reportData.extraTitle}: ${reportData.extraDetail}
+إضافات أخرى: ${reportData.extraLong}
+=============================================
+        `;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `تقرير_${reportData.school || 'مؤسسة'}_${reportData.date}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
     <div class="btn-area">
         <button class="btn-download" onclick="generateAndDownloadFile()">📥 تحميل التقرير (ملف)</button>
         <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
