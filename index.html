@@ -7,34 +7,80 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        #pdf-content { position: absolute; left: -9999px; width: 700px; padding: 40px; background: white; color: black; text-align: right; direction: rtl; }
-        .btn-pdf { background: #e74c3c; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: 'Cairo'; }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #f4f7f6; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            padding-top: 50px;
+        }
+
+        /* هذا هو الجزء الذي سيتحول لـ PDF - جعلناه مرئياً لضمان عدم ظهور صفحة بيضاء */
+        #pdf-content { 
+            width: 90%;
+            max-width: 700px;
+            background: white; 
+            padding: 30px; 
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            color: black;
+            direction: rtl;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn-pdf { 
+            background: #e74c3c; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-family: 'Cairo';
+            font-size: 1.1rem;
+        }
+
+        h1 { font-size: 1.5rem; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; text-align: center; }
+        .data-row { margin: 15px 0; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        .label { font-weight: bold; color: #7f8c8d; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2 id="status">جاري تجهيز ملف PDF...</h2>
-    <button class="btn-pdf" id="downloadBtn" style="display:none;" onclick="generatePDF()">تحميل PDF الآن</button>
+<div class="controls">
+    <h2 id="status">جاري التحميل...</h2>
+    <button class="btn-pdf" id="downloadBtn" onclick="generatePDF()">📥 اضغط هنا إذا لم يبدأ التحميل</button>
 </div>
 
 <div id="pdf-content">
-    <h1 style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 10px;">التقرير اليومي للمشرف التربوي</h1>
-    <p><strong>التاريخ:</strong> <span id="p-date"></span></p>
-    <p><strong>المؤسسة:</strong> <span id="p-school"></span></p>
-    <p><strong>المشرف:</strong> <span id="p-supervisor"></span></p>
-    <hr>
-    <h3>الغيابات:</h3>
-    <p>عدد التلاميذ: <span id="p-absCount"></span> | الأقسام: <span id="p-absClasses"></span></p>
-    <p>الأسماء: <span id="p-absNames"></span></p>
-    <hr>
-    <h3>الانضباط والحوادث:</h3>
-    <p id="p-incidents"></p>
-    <hr>
-    <h3>الملاحظات الختامية:</h3>
-    <p id="p-notes"></p>
+    <h1>التقرير اليومي للمشرف التربوي</h1>
+    
+    <div class="data-row"><span class="label">📅 التاريخ:</span> <span id="p-date">...</span></div>
+    <div class="data-row"><span class="label">🏫 المؤسسة:</span> <span id="p-school">...</span></div>
+    <div class="data-row"><span class="label">👤 المشرف:</span> <span id="p-supervisor">...</span></div>
+    
+    <div class="data-row">
+        <h3>📊 الغيابات</h3>
+        <p>عدد التلاميذ: <span id="p-absCount">0</span> | الأقسام: <span id="p-absClasses">...</span></p>
+        <p>الأسماء: <span id="p-absNames">...</span></p>
+    </div>
+
+    <div class="data-row">
+        <h3>🔴 الانضباط والحوادث</h3>
+        <p id="p-incidents">لا توجد حوادث مسجلة</p>
+    </div>
+
+    <div class="data-row">
+        <h3>📝 الملاحظات الختامية</h3>
+        <p id="p-notes">لا توجد ملاحظات</p>
+    </div>
 </div>
 
 <script>
@@ -46,39 +92,47 @@
 
         if (encodedData) {
             try {
+                // فك التشفير مع دعم العربية
                 const decodedJSON = decodeURIComponent(escape(atob(encodedData)));
                 reportData = JSON.parse(decodedJSON);
                 
-                // ملء البيانات في القالب المخفي
-                document.getElementById('p-date').innerText = reportData.date;
-                document.getElementById('p-school').innerText = reportData.school;
-                document.getElementById('p-supervisor').innerText = reportData.supervisor;
-                document.getElementById('p-absCount').innerText = reportData.absCount;
-                document.getElementById('p-absClasses').innerText = reportData.absClasses;
-                document.getElementById('p-absNames').innerText = reportData.absNames;
-                document.getElementById('p-incidents').innerText = reportData.incidents;
-                document.getElementById('p-notes').innerText = reportData.notes || reportData.finalNotes;
+                // تعبئة البيانات
+                document.getElementById('p-date').innerText = reportData.date || '';
+                document.getElementById('p-school').innerText = reportData.school || '';
+                document.getElementById('p-supervisor').innerText = reportData.supervisor || '';
+                document.getElementById('p-absCount').innerText = reportData.absCount || '0';
+                document.getElementById('p-absClasses').innerText = reportData.absClasses || '';
+                document.getElementById('p-absNames').innerText = reportData.absNames || '';
+                document.getElementById('p-incidents').innerText = reportData.incidents || 'لا يوجد';
+                document.getElementById('p-notes').innerText = reportData.finalNotes || reportData.notes || 'لا يوجد';
 
-                document.getElementById('status').innerText = "✅ الملف جاهز للتحميل";
-                document.getElementById('downloadBtn').style.display = "inline-block";
+                document.getElementById('status').innerText = "✅ التقرير جاهز";
                 
-                // بدء التحميل تلقائياً
-                setTimeout(generatePDF, 1000);
+                // محاولة التحميل التلقائي بعد ثانية واحدة
+                setTimeout(generatePDF, 1500);
+
             } catch (e) {
-                document.getElementById('status').innerText = "❌ خطأ في معالجة البيانات";
+                document.getElementById('status').innerText = "❌ خطأ في قراءة البيانات";
+                console.error(e);
             }
+        } else {
+            document.getElementById('status').innerText = "⚠️ لم يتم إرسال بيانات";
         }
     };
 
     function generatePDF() {
         const element = document.getElementById('pdf-content');
+        const fileName = `تقرير_${reportData ? reportData.school : 'مؤسسة'}.pdf`;
+        
         const opt = {
-            margin:       1,
-            filename:     `تقرير_${reportData.school}_${reportData.date}.pdf`,
+            margin:       0.5,
+            filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
+
+        // تنفيذ عملية التحويل
         html2pdf().set(opt).from(element).save();
     }
 </script>
