@@ -3,45 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مركز تحميل التقارير</title>
+    <title>تحميل التقرير PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #f4f7f6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .loader-card {
-            background: white;
-            padding: 30px;
-            border-radius: 12 padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            border-top: 5px solid #3498db;
-        }
-        .btn-direct {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            font-family: 'Cairo';
-        }
+        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        #pdf-content { position: absolute; left: -9999px; width: 700px; padding: 40px; background: white; color: black; text-align: right; direction: rtl; }
+        .btn-pdf { background: #e74c3c; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: 'Cairo'; }
     </style>
 </head>
 <body>
 
-<div class="loader-card">
-    <h2 id="status">جاري معالجة التقرير...</h2>
-    <p id="details">يرجى الانتظار لحظة لبدء التحميل تلقائياً.</p>
-    <button id="manualBtn" class="btn-direct" style="display:none;" onclick="downloadAction()">تحميل يدوي إذا لم يبدأ</button>
+<div class="card">
+    <h2 id="status">جاري تجهيز ملف PDF...</h2>
+    <button class="btn-pdf" id="downloadBtn" style="display:none;" onclick="generatePDF()">تحميل PDF الآن</button>
+</div>
+
+<div id="pdf-content">
+    <h1 style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 10px;">التقرير اليومي للمشرف التربوي</h1>
+    <p><strong>التاريخ:</strong> <span id="p-date"></span></p>
+    <p><strong>المؤسسة:</strong> <span id="p-school"></span></p>
+    <p><strong>المشرف:</strong> <span id="p-supervisor"></span></p>
+    <hr>
+    <h3>الغيابات:</h3>
+    <p>عدد التلاميذ: <span id="p-absCount"></span> | الأقسام: <span id="p-absClasses"></span></p>
+    <p>الأسماء: <span id="p-absNames"></span></p>
+    <hr>
+    <h3>الانضباط والحوادث:</h3>
+    <p id="p-incidents"></p>
+    <hr>
+    <h3>الملاحظات الختامية:</h3>
+    <p id="p-notes"></p>
 </div>
 
 <script>
@@ -51,153 +44,42 @@
         const urlParams = new URLSearchParams(window.location.search);
         const encodedData = urlParams.get('data');
 
-        if (!encodedData) {
-            document.getElementById('status').innerText = "⚠️ خطأ في البيانات";
-            document.getElementById('details').innerText = "لم يتم العثور على بيانات تقرير صالحة لإتمام التحميل.";
-            return;
-        }
+        if (encodedData) {
+            try {
+                const decodedJSON = decodeURIComponent(escape(atob(encodedData)));
+                reportData = JSON.parse(decodedJSON);
+                
+                // ملء البيانات في القالب المخفي
+                document.getElementById('p-date').innerText = reportData.date;
+                document.getElementById('p-school').innerText = reportData.school;
+                document.getElementById('p-supervisor').innerText = reportData.supervisor;
+                document.getElementById('p-absCount').innerText = reportData.absCount;
+                document.getElementById('p-absClasses').innerText = reportData.absClasses;
+                document.getElementById('p-absNames').innerText = reportData.absNames;
+                document.getElementById('p-incidents').innerText = reportData.incidents;
+                document.getElementById('p-notes').innerText = reportData.notes || reportData.finalNotes;
 
-        try {
-            // فك التشفير
-            const decodedJSON = decodeURIComponent(escape(atob(encodedData)));
-            reportData = JSON.parse(decodedJSON);
-
-            document.getElementById('status').innerText = "✅ التقرير جاهز";
-            document.getElementById('details').innerText = "بدأ تحميل ملف: " + (reportData.school || "تقرير") + ".txt";
-            document.getElementById('manualBtn').style.display = "inline-block";
-
-            // تشغيل التحميل التلقائي
-            downloadAction();
-
-        } catch (e) {
-            document.getElementById('status').innerText = "❌ فشل المعالجة";
-            document.getElementById('details').innerText = "حدث خطأ أثناء فك تشفير بيانات التقرير.";
+                document.getElementById('status').innerText = "✅ الملف جاهز للتحميل";
+                document.getElementById('downloadBtn').style.display = "inline-block";
+                
+                // بدء التحميل تلقائياً
+                setTimeout(generatePDF, 1000);
+            } catch (e) {
+                document.getElementById('status').innerText = "❌ خطأ في معالجة البيانات";
+            }
         }
     };
 
-    function downloadAction() {
-        if (!reportData) return;
-
-        const content = `
-=============================================
-         التقرير اليومي للمشرف التربوي         
-=============================================
-التاريخ: ${reportData.date}
-المؤسسة: ${reportData.school}
-المشرف: ${reportData.supervisor}
----------------------------------------------
-[ الغيابات ]
-عدد التلاميذ: ${reportData.absCount}
-الأقسام: ${reportData.absClasses}
-الأسماء: ${reportData.absNames}
-غياب الأساتذة: ${reportData.profAbs}
----------------------------------------------
-[ الانضباط والحوادث ]
-الحالة: ${reportData.disc1 ? 'شجار ' : ''}${reportData.disc2 ? 'تأخر ' : ''}${reportData.disc3 ? 'خروج بدون إذن' : ''}
-ملاحظات الانضباط: ${reportData.discNote || 'لا يوجد'}
-الحوادث: ${reportData.incidents}
----------------------------------------------
-[ سير الدروس ]
-ملاحظات عامة: ${reportData.finalNotes}
----------------------------------------------
-[ معلومات إضافية ]
-${reportData.extraTitle}: ${reportData.extraDetail}
-إضافات أخرى: ${reportData.extraLong}
-=============================================
-        `;
-
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `تقرير_${reportData.school || 'مؤسسة'}_${reportData.date}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    }
-</script>
-
-</body>
-</html>
-    <div class="btn-area">
-        <button class="btn-download" onclick="generateAndDownloadFile()">📥 تحميل التقرير (ملف)</button>
-        <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
-        <button class="btn-reset" onclick="resetForm()">🧹 إفراغ الحقول</button>
-    </div>
-</div>
-
-<script>
-    // ضبط تاريخ اليوم تلقائياً
-    document.getElementById('date').valueAsDate = new Date();
-
-    function generateAndDownloadFile() {
-        // 1. جلب البيانات من الحقول
-        const date = document.getElementById('date').value || 'غير محدد';
-        const school = document.getElementById('school').value || 'غير محدد';
-        const supervisor = document.getElementById('supervisor').value || 'غير محدد';
-        const absCount = document.getElementById('absCount').value || '0';
-        const profAbs = document.getElementById('profAbs').value || 'لا يوجد';
-        const absNames = document.getElementById('absNames').value || 'لا يوجد تفاصيل';
-        const incidents = document.getElementById('incidents').value || 'لا يوجد حوادث مسجلة';
-        const finalNotes = document.getElementById('finalNotes').value || 'لا توجد ملاحظات إضافية';
-
-        // 2. تنسيق محتوى الملف النصي
-        const fileContent = `
-=============================================
-         التقرير اليومي للمشرف التربوي         
-=============================================
-
-التاريخ: ${date}
-المؤسسة: ${school}
-اسم المشرف: ${supervisor}
-
----------------------------------------------
-[ الغيابات ]
-- عدد التلاميذ الغائبين: ${absCount}
-- أسماء التلاميذ الغائبين:
-${absNames}
-
-- غياب الأساتذة: 
-${profAbs}
-
----------------------------------------------
-[ الانضباط والحوادث ]
-${incidents}
-
----------------------------------------------
-[ الملاحظات العامة ]
-${finalNotes}
-
-=============================================
-تم التوليد بواسطة النظام الرقمي للمشرفين.
-        `;
-
-        // 3. إنشاء الملف وتحميله برمجياً (تقنية Blob)
-        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        // ضبط اسم الملف بناءً على التاريخ واسم المؤسسة
-        link.href = url;
-        link.download = `تقرير_${school}_${date}.txt`; 
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        // تنظيف الذاكرة بعد التحميل
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-    }
-
-    function resetForm() {
-        if(confirm("هل أنت متأكد من مسح جميع البيانات المدخلة؟")) {
-            const inputs = document.querySelectorAll('input, textarea');
-            inputs.forEach(input => {
-                if (input.type !== 'date') input.value = '';
-            });
-            document.getElementById('date').valueAsDate = new Date();
-        }
+    function generatePDF() {
+        const element = document.getElementById('pdf-content');
+        const opt = {
+            margin:       1,
+            filename:     `تقرير_${reportData.school}_${reportData.date}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
     }
 </script>
 
