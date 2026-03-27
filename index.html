@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل المشرف التربوي - النسخة الذكية</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        :root {
+            --green: #27ae60; --yellow: #f1c40f; --blue: #3498db;
+            --red: #e74c3c; --purple: #9b59b6; --black: #2c3e50;
+            --gray: #7f8c8d; --orange: #e67e22; --white: #ffffff;
+        }
+        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f6; margin: 0; padding: 10px; }
+        .container { max-width: 850px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .main-header { background: var(--black); color: white; padding: 20px; text-align: center; border-bottom: 5px solid var(--green); }
+        .section { padding: 20px; border-bottom: 1px solid #eee; }
+        .section-title { display: flex; align-items: center; gap: 10px; font-weight: 900; margin-bottom: 15px; font-size: 1rem; color: #2c3e50; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: 'Cairo'; }
+        .sec-1 { border-right: 5px solid var(--green); }
+        .sec-4 { border-right: 5px solid var(--red); background: #fffafa; }
+        .btn-area { padding: 20px; display: flex; gap: 10px; background: #fff; flex-wrap: wrap; }
+        button { flex: 1; min-width: 150px; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Cairo'; font-size: 0.9rem; transition: 0.3s; }
+        .btn-save { background: var(--green); color: white; }
+        .btn-share { background: var(--purple); color: white; }
+        .btn-reset { background: var(--gray); color: white; }
+        .archive-section { padding: 20px; background: #ececec; }
+        .log-item { background: white; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-right: 4px solid var(--orange); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+        @media print { .btn-area, .archive-section { display: none !important; } }
+    </style>
+</head>
+<body>
+
+<div class="container" id="reportContent">
+    <div class="main-header">
+        <h1>📓 السجل الرقمي للمشرف التربوي</h1>
+        <small id="statusLabel">الوضع: تقرير جديد</small>
+    </div>
+
+    <div class="section sec-1">
+        <div class="section-title">🟢 1. المعلومات العامة</div>
+        <div class="grid">
+            <div><label>📅 التاريخ</label><input type="date" id="date"></div>
+            <div><label>🏫 المؤسسة</label><input type="text" id="school"></div>
+        </div>
+        <div style="margin-top:10px;">
+            <label>👤 اسم المشرف</label>
+            <input type="text" id="supervisor">
+        </div>
+    </div>
+
+    <div class="section" style="border-right: 5px solid var(--yellow);">
+        <div class="section-title">🟡 2. الغيابات</div>
+        <div class="grid">
+            <div><label>عدد غياب التلاميذ</label><input type="number" id="absCount"></div>
+            <div><label>غياب الأساتذة</label><input type="text" id="profAbs" placeholder="اسم الأستاذ - المادة"></div>
+        </div>
+    </div>
+
+    <div class="section sec-4">
+        <div class="section-title">🔴 3. الانضباط والحوادث</div>
+        <textarea id="incidents" rows="3" placeholder="سجل هنا أي شجار، تأخر، أو حوادث استثنائية..."></textarea>
+    </div>
+
+    <div class="section" style="border-right: 5px solid var(--blue);">
+        <div class="section-title">🔵 4. ملاحظات عامة</div>
+        <textarea id="finalNotes" rows="2"></textarea>
+    </div>
+
+    <div class="btn-area">
+        <button class="btn-save" onclick="saveLocal()">💾 حفظ محلي</button>
+        <button class="btn-share" onclick="generateLink()">🔗 مشاركة عبر رابط</button>
+        <button class="btn-reset" onclick="resetForm()">🧹 مسح</button>
+        <button style="background: var(--black); color:white" onclick="window.print()">🖨️ طباعة</button>
+    </div>
+
+    <div class="archive-section">
+        <h3>📂 التقارير المحفوظة (على هذا الجهاز)</h3>
+        <div id="logHistory"></div>
+    </div>
+</div>
+
+<script>
+    // 1. ضبط التاريخ
+    document.getElementById('date').valueAsDate = new Date();
+
+    // 2. فك التشفير عند فتح الرابط
+    window.onload = function() {
+        const params = new URLSearchParams(window.location.search);
+        const data = params.get('d');
+        if (data) {
+            try {
+                const decoded = JSON.parse(decodeURIComponent(escape(atob(data))));
+                document.getElementById('date').value = decoded.t || "";
+                document.getElementById('school').value = decoded.m || "";
+                document.getElementById('supervisor').value = decoded.s || "";
+                document.getElementById('absCount').value = decoded.g || "";
+                document.getElementById('profAbs').value = decoded.p || "";
+                document.getElementById('incidents').value = decoded.h || "";
+                document.getElementById('finalNotes').value = decoded.n || "";
+                document.getElementById('statusLabel').innerText = "عرض تقرير مستلم";
+                document.getElementById('statusLabel').style.color = "var(--yellow)";
+            } catch (e) {
+                alert("الرابط غير صالح أو البيانات تالفة");
+            }
+        }
+        showLogs();
+    };
+
+    // 3. توليد الرابط (Base64)
+    function generateLink() {
+        const report = {
+            t: document.getElementById('date').value,
+            m: document.getElementById('school').value,
+            s: document.getElementById('supervisor').value,
+            g: document.getElementById('absCount').value,
+            p: document.getElementById('profAbs').value,
+            h: document.getElementById('incidents').value,
+            n: document.getElementById('finalNotes').value
+        };
+
+        const json = JSON.stringify(report);
+        const base64 = btoa(unescape(encodeURIComponent(json)));
+        const fullURL = window.location.origin + window.location.pathname + "?d=" + base64;
+
+        const dummy = document.createElement("input");
+        document.body.appendChild(dummy);
+        dummy.value = fullURL;
+        dummy.select();
+        document.execCommand("copy");
+        document.body.removeChild(dummy);
+
+        alert("تم إنشاء رابط التقرير ونسخه بنجاح!\nيمكنك الآن إرساله لأي شخص.");
+    }
+
+    // 4. الحفظ المحلي (LocalStorage)
+    function saveLocal() {
+        const report = {
+            date: document.getElementById('date').value,
+            school: document.getElementById('school').value,
+            id: Date.now()
+        };
+        let reports = JSON.parse(localStorage.getItem('reports_v3') || '[]');
+        reports.unshift(report);
+        localStorage.setItem('reports_v3', JSON.stringify(reports));
+        showLogs();
+        alert("تم الحفظ في ذاكرة المتصفح");
+    }
+
+    function showLogs() {
+        const reports = JSON.parse(localStorage.getItem('reports_v3') || '[]');
+        const container = document.getElementById('logHistory');
+        container.innerHTML = reports.map(r => `
+            <div class="log-item">
+                <span>📅 ${r.date} | 🏫 ${r.school}</span>
+            </div>
+        `).join('');
+    }
+
+    function resetForm() {
+        if(confirm("سيتم مسح جميع الحقول، هل أنت متأكد؟")) {
+            location.href = window.location.pathname;
+        }
+    }
+</script>
+
+</body>
+</html>
